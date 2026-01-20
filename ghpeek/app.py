@@ -13,6 +13,7 @@ from github import Github
 from github.GithubException import GithubException
 from rich.text import Text
 from textual import on
+from textual.events import Click
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
@@ -405,6 +406,14 @@ class GhPeekApp(App):
             pulls_label.add_class("active")
             issues_label.remove_class("active")
             pulls.focus()
+
+    @on(Click, "#issues-label")
+    def _click_issues_label(self, event: Click) -> None:
+        self._set_view("issues")
+
+    @on(Click, "#pulls-label")
+    def _click_pulls_label(self, event: Click) -> None:
+        self._set_view("pulls")
 
     def _ensure_read_state(self, repo: str) -> ReadState:
         if repo not in self.state.read:

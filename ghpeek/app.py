@@ -214,18 +214,19 @@ class PreviewScreen(ModalScreen[None]):
 
     def compose(self) -> ComposeResult:
         with Container(id="preview"):
-            yield Label(self.item.title, id="preview-title")
-            yield Static(self._build_meta(), id="preview-meta")
-            body = self.item.body.strip() if self.item.body else ""
-            if not body:
-                body = "_No description provided._"
-            yield Markdown(body, id="preview-body")
-            with Horizontal(id="comments-header"):
-                yield Static("Comments", id="comments-title")
-                yield Button("Load older", id="load-older", classes="hidden")
-                yield LoadingIndicator(id="comments-loading", classes="hidden")
-            yield VerticalScroll(id="comments-body")
-            yield Label("Enter: open in browser   Esc: close", id="preview-hint")
+            with VerticalScroll(id="preview-scroll"):
+                yield Label(self.item.title, id="preview-title")
+                yield Static(self._build_meta(), id="preview-meta")
+                body = self.item.body.strip() if self.item.body else ""
+                if not body:
+                    body = "_No description provided._"
+                yield Markdown(body, id="preview-body")
+                with Horizontal(id="comments-header"):
+                    yield Static("Comments", id="comments-title")
+                    yield Button("Load older", id="load-older", classes="hidden")
+                    yield LoadingIndicator(id="comments-loading", classes="hidden")
+                yield Container(id="comments-body")
+                yield Label("Enter: open in browser   Esc: close", id="preview-hint")
 
     def _build_meta(self) -> str:
         labels = ", ".join(self.item.labels) if self.item.labels else "none"
@@ -275,7 +276,7 @@ class PreviewScreen(ModalScreen[None]):
 
     def _set_comments_loading(self, loading: bool) -> None:
         indicator = self.query_one("#comments-loading", LoadingIndicator)
-        body = self.query_one("#comments-body", VerticalScroll)
+        body = self.query_one("#comments-body", Container)
         load_older = self.query_one("#load-older", Button)
         if loading:
             indicator.remove_class("hidden")
@@ -289,7 +290,7 @@ class PreviewScreen(ModalScreen[None]):
         title = self.query_one("#comments-title", Static)
         total = len(self.comments)
         title.update(f"Comments ({total})")
-        body = self.query_one("#comments-body", VerticalScroll)
+        body = self.query_one("#comments-body", Container)
         for child in list(body.children):
             child.remove()
         if total == 0:

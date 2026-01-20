@@ -119,6 +119,10 @@ PreviewScreen {
     background: $panel;
 }
 
+#preview-scroll {
+    height: 1fr;
+}
+
 #preview-title {
     text-style: bold;
     padding: 0 0 1 0;
@@ -131,7 +135,6 @@ PreviewScreen {
 }
 
 #preview-body {
-    height: 1fr;
     border: round $secondary;
     padding: 1 1;
 }
@@ -153,7 +156,6 @@ PreviewScreen {
 }
 
 #comments-body {
-    height: 8;
     border: round $secondary;
     padding: 1 1;
 }

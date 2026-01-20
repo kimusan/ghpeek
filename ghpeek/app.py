@@ -88,11 +88,20 @@ class IssueListItem(ListItem):
 
 
 class AddRepoScreen(ModalScreen[Optional[str]]):
+    def __init__(self, show_repo_list: bool) -> None:
+        super().__init__()
+        self.show_repo_list = show_repo_list
+
     def compose(self) -> ComposeResult:
         with Container(id="add-repo"):
-            yield Label("Add repository (owner/repo)")
+            yield Label("Add repository")
+            if self.show_repo_list:
+                yield Label("Select from your repositories", id="repo-picker-label")
+                yield ListView(id="repo-picker")
+                yield LoadingIndicator(id="repo-picker-loading")
+            yield Label("Or enter owner/repo", id="repo-input-label")
             yield Input(placeholder="owner/repo", id="repo-input")
-            yield Label("Press Enter to add, Esc to cancel", id="repo-hint")
+            yield Label("Enter: select/add   Esc: cancel", id="repo-hint")
 
     def on_mount(self) -> None:
         self.query_one(Input).focus()
@@ -104,6 +113,19 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
     def on_key(self, event) -> None:
         if event.key == "escape":
             self.dismiss(None)
+
+    def update_repos(self, repos: list[str]) -> None:
+        if not self.show_repo_list:
+            return
+        repo_list = self.query_one("#repo-picker", ListView)
+        repo_list.clear()
+        for repo in repos:
+            repo_list.append(RepoListItem(repo))
+        self.query_one("#repo-picker-loading", LoadingIndicator).add_class("hidden")
+
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        if event.list_view.id == "repo-picker" and isinstance(event.item, RepoListItem):
+            self.dismiss(event.item.full_name)
 
 
 class PreviewScreen(ModalScreen[None]):
@@ -219,6 +241,16 @@ class GhPeekApp(App):
         background: $panel;
     }
 
+    #repo-picker {
+        height: 8;
+        border: round $secondary;
+        margin: 1 0;
+    }
+
+    #repo-picker-loading {
+        height: 1;
+    }
+
     #preview {
         padding: 1 2;
         width: 80%;
@@ -269,6 +301,7 @@ class GhPeekApp(App):
         self.show_closed = False
         token = os.getenv("GITHUB_TOKEN")
         self.github = Github(token) if token else Github()
+        self.has_token = bool(token)
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -470,7 +503,28 @@ class GhPeekApp(App):
         )
 
     def action_add_repo(self) -> None:
-        self.push_screen(AddRepoScreen(), self._handle_add_repo)
+        screen = AddRepoScreen(self.has_token)
+        self.push_screen(screen, self._handle_add_repo)
+        if self.has_token:
+            self.run_worker(self._load_user_repos(screen))
+
+    async def _load_user_repos(self, screen: AddRepoScreen) -> None:
+        try:
+            repos = await asyncio.to_thread(self._fetch_user_repos)
+        except GithubException as exc:
+            self.call_from_thread(
+                self._set_status,
+                f"GitHub error: {exc.data.get('message', str(exc))}",
+            )
+            return
+        except Exception as exc:  # noqa: BLE001
+            self.call_from_thread(self._set_status, f"Error: {exc}")
+            return
+        self.call_from_thread(screen.update_repos, repos)
+
+    def _fetch_user_repos(self) -> list[str]:
+        user = self.github.get_user()
+        return sorted(repo.full_name for repo in user.get_repos())
 
     def action_toggle_closed(self) -> None:
         self.show_closed = not self.show_closed

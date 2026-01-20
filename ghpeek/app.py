@@ -231,6 +231,7 @@ class PreviewScreen(ModalScreen[None]):
 
 class GhPeekApp(App):
     CSS_PATH = "app.tcss"
+    TITLE = "GHPeek - your friendly github viewer"
 
     BINDINGS = [
         ("a", "add_repo", "Add repo"),

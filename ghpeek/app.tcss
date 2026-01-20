@@ -158,6 +158,8 @@ PreviewScreen {
 #comments-body {
     border: round $secondary;
     padding: 1 1;
+    height: auto;
+    min-height: 1;
 }
 
 .comment-box {

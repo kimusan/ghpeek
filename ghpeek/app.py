@@ -266,8 +266,9 @@ class GhPeekApp(App):
                     yield Label("Pull Requests", id="pulls-label")
                 yield ListView(id="issues-list")
                 yield ListView(id="pulls-list", classes="hidden")
-                yield LoadingIndicator(id="loading", classes="hidden")
-                yield Static("", id="status")
+                with Container(id="status-bar"):
+                    yield LoadingIndicator(id="loading", classes="hidden")
+                    yield Static("", id="status")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -284,10 +285,13 @@ class GhPeekApp(App):
 
     def _set_loading(self, loading: bool) -> None:
         indicator = self.query_one("#loading", LoadingIndicator)
+        status = self.query_one("#status", Static)
         if loading:
             indicator.remove_class("hidden")
+            status.add_class("hidden")
         else:
             indicator.add_class("hidden")
+            status.remove_class("hidden")
 
     def _set_view(self, view: str) -> None:
         self.current_view = view

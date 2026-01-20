@@ -59,8 +59,11 @@ PreviewScreen {
     color: $text-muted;
 }
 
+#status-bar {
+    height: 1;
+}
+
 #loading {
-    dock: bottom;
     height: 1;
 }
 

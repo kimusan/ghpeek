@@ -141,6 +141,7 @@ PreviewScreen {
 
 #comments-header {
     height: 1;
+    align: left middle;
 }
 
 #comments-title {
@@ -153,6 +154,11 @@ PreviewScreen {
 
 #comments-loading {
     height: 1;
+}
+
+#comments-loading-text {
+    color: $text-muted;
+    padding: 0 0 1 0;
 }
 
 #comments-body {

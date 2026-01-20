@@ -224,7 +224,8 @@ class PreviewScreen(ModalScreen[None]):
                 with Horizontal(id="comments-header"):
                     yield Static("Comments", id="comments-title")
                     yield Button("Load older", id="load-older", classes="hidden")
-                    yield LoadingIndicator(id="comments-loading", classes="hidden")
+                yield LoadingIndicator(id="comments-loading", classes="hidden")
+                yield Static("Loading comments...", id="comments-loading-text", classes="hidden")
                 yield Container(id="comments-body")
                 yield Label("Enter: open in browser   Esc: close", id="preview-hint")
 
@@ -278,13 +279,16 @@ class PreviewScreen(ModalScreen[None]):
         indicator = self.query_one("#comments-loading", LoadingIndicator)
         body = self.query_one("#comments-body", Container)
         load_older = self.query_one("#load-older", Button)
+        loading_text = self.query_one("#comments-loading-text", Static)
         if loading:
             indicator.remove_class("hidden")
-            body.add_class("hidden")
+            loading_text.remove_class("hidden")
             load_older.add_class("hidden")
+            for child in list(body.children):
+                child.remove()
         else:
             indicator.add_class("hidden")
-            body.remove_class("hidden")
+            loading_text.add_class("hidden")
 
     def _render_comments(self) -> None:
         title = self.query_one("#comments-title", Static)

@@ -103,7 +103,7 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
         self._repo_choices: list[RepoChoice] = []
 
     def compose(self) -> ComposeResult:
-        with Container(id="add-repo", border_title="Add repository"):
+        with Container(id="add-repo"):
             if self.show_repo_list:
                 yield Label("Select from your repositories", id="repo-picker-label")
                 with Container(id="repo-filters"):
@@ -120,6 +120,7 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
             yield Label("Enter: select/add   Esc: cancel", id="repo-hint")
 
     def on_mount(self) -> None:
+        self.query_one("#add-repo", Container).border_title = "Add repository"
         self.query_one(Input).focus()
 
     @on(Input.Submitted, "#repo-input")
@@ -354,7 +355,7 @@ class GhPeekApp(App):
     def compose(self) -> ComposeResult:
         yield Header()
         with Horizontal(id="app-container"):
-            with Vertical(id="sidebar", border_title="Repositories"):
+            with Vertical(id="sidebar"):
                 yield ListView(id="repo-list")
             with Vertical(id="main"):
                 yield Static("Select a repository to load details.", id="summary")
@@ -368,6 +369,7 @@ class GhPeekApp(App):
         yield Footer()
 
     def on_mount(self) -> None:
+        self.query_one("#sidebar", Vertical).border_title = "Repositories"
         repo_list = self.query_one("#repo-list", ListView)
         for repo in sorted(self.state.repos):
             repo_list.append(RepoListItem(repo))

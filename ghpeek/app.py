@@ -290,7 +290,8 @@ class PreviewScreen(ModalScreen[None]):
         total = len(self.comments)
         title.update(f"Comments ({total})")
         body = self.query_one("#comments-body", VerticalScroll)
-        body.clear()
+        for child in list(body.children):
+            child.remove()
         if total == 0:
             body.mount(Static("No comments yet.", classes="comment-empty"))
         else:

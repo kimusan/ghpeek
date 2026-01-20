@@ -238,6 +238,7 @@ class GhPeekApp(App):
         ("i", "show_issues", "Issues"),
         ("p", "show_pulls", "Pull requests"),
         ("c", "toggle_closed", "Toggle closed"),
+        ("q", "quit", "Quit"),
         ("enter", "open_item", "Open"),
     ]
 

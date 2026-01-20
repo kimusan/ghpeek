@@ -2,8 +2,7 @@
 
 ![GHpeek screenshot](https://github.com/kimusan/ghpeek/blob/main/assets/screenshot.png)
 
-GHpeek is a stylish python TUI to get an overview of your github repositories, pull requests, issues and more. You simply add the reposity to the list and GHpeek will then show you a clear and easy to read list of issues and pull requests. Unread items are highlighted so you can easily see what needs your attention.
-The TUI will also show you a summary of the repository metrices like stars, forks, open issues and pull requests.
+GHpeek is a friendly terminal UI for keeping tabs on your GitHub repositories. Add the repos you care about and get a clean, readable list of open issues and pull requests with unread items highlighted. Each repo also shows a quick summary of stars, forks, and open counts so you can spot activity at a glance.
 
 ## Dependencies
 
@@ -21,7 +20,7 @@ GHpeek can be installed via pip. Simply run the following command:
 pip install ghpeek
 ```
 
-or even btter with pipx:
+Or, even better with pipx:
 
 ```bash
 pipx install ghpeek
@@ -35,15 +34,19 @@ To start GHpeek, simply run the following command:
 ghpeek
 ```
 
-The TUI lets you add repositories by pressing `a`. If a GitHub token is configured, you can pick from your repositories, filter forks, personal, and private/public repos, or enter a repository name in the format `owner/repo`. Without a token, you can still enter repositories manually. 
-The repo will get added to the list on the left. You can navigate through the list using the arrow keys and a quick view of the details like number of issues and pull requests, stars, forks, etc. is shown. Selecting a repository will show you the issues and pull requests in the main view. You can navigate through the issues and pull requests using the arrow keys. Pressing `Enter` opens a preview modal for the selected issue or pull request, and pressing `Enter` again opens it in your default web browser.
-You can jump between issues and pull requests using the `i` and `p` keys or by pressing `tag` to go to next view area. Pressing `r` will refresh the data for the selected repository.
-Press `c` to toggle showing closed issues and pull requests.
-The UI is providing clear visual feedback when loading data or when an error occurs.
+Press `a` to add a repository. If a GitHub token is configured, you can choose from your own repositories, filter forks, organizations, and public/private repos, or enter a repo manually in `owner/repo` format. Without a token, manual entry still works.
+
+Once added, repositories appear on the left. Use the arrow keys to switch between them, and you will see a summary of stars, forks, and open counts. The main panel lists issues and pull requests; press `Enter` to open a preview, then `Enter` again to open it in your browser.
+
+Quick keys:
+- `i` / `p`: jump between Issues and Pull Requests
+- `c`: show or hide closed issues/PRs
+- `r`: refresh the selected repo
+- `q`: quit
 
 ## GitHub token
 
-To enable repository picking and increase API rate limits, set a personal access token in the `GITHUB_TOKEN` environment variable (recommended via a `.env` file in the project root). The token should include at least the `repo` scope if you want to access private repositories; public repositories work with no scopes or `public_repo`.
+To enable repository picking and higher API limits, set a personal access token in `GITHUB_TOKEN` (recommended via a `.env` file in the project root). For private repositories, the token needs the `repo` scope. For public repos only, `public_repo` (or no scopes) is sufficient.
 
 # License
 
@@ -56,11 +59,11 @@ I would love to see contributions to GHpeek! If you have any ideas for new featu
 # Acknowledgements
 
 This project uses the following open source libraries:
- - [Textual]()
- - [PyGithub]()
- - [Rich]()
- - [markdown]()
- - [python-dotenv]()
+ - [Textual](https://github.com/Textualize/textual)
+ - [PyGithub](https://github.com/PyGithub/PyGithub)
+ - [Rich](https://github.com/Textualize/rich)
+ - [Markdown](https://python-markdown.github.io/)
+ - [python-dotenv](https://github.com/theskumar/python-dotenv)
 
 GHpeek was inspired by other terminal-based tools and was originally written by [Kim Schulz](https://Schulz.dk).
 

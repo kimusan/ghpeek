@@ -291,8 +291,8 @@ class GhPeekApp(App):
     }
 
     #repo-filters {
-        height: 1;
         margin: 0 0 1 0;
+        padding: 1 0 0 0;
     }
 
     #repo-picker-loading {

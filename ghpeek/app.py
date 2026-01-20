@@ -5,6 +5,7 @@ import os
 import re
 import webbrowser
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Iterable, Optional
 
 from dotenv import load_dotenv
@@ -23,6 +24,7 @@ from textual.widgets import (
     ListItem,
     ListView,
     LoadingIndicator,
+    Markdown,
     Static,
 )
 
@@ -48,6 +50,12 @@ class RepoItem:
     url: str
     read: bool
     state: str
+    author: str
+    created_at: str
+    updated_at: str
+    comments: int
+    labels: list[str]
+    body: str
 
 
 @dataclass
@@ -95,6 +103,42 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
 
     def on_key(self, event) -> None:
         if event.key == "escape":
+            self.dismiss(None)
+
+
+class PreviewScreen(ModalScreen[None]):
+    def __init__(self, item: RepoItem, list_item: "IssueListItem") -> None:
+        super().__init__()
+        self.item = item
+        self.list_item = list_item
+
+    def compose(self) -> ComposeResult:
+        with Container(id="preview"):
+            yield Label(self.item.title, id="preview-title")
+            yield Static(self._build_meta(), id="preview-meta")
+            body = self.item.body.strip() if self.item.body else ""
+            if not body:
+                body = "_No description provided._"
+            yield Markdown(body, id="preview-body")
+            yield Label("Enter: open in browser   Esc: close", id="preview-hint")
+
+    def _build_meta(self) -> str:
+        labels = ", ".join(self.item.labels) if self.item.labels else "none"
+        return (
+            f"#{self.item.number}  State: {self.item.state}  "
+            f"Author: {self.item.author}  "
+            f"Comments: {self.item.comments}\n"
+            f"Created: {self.item.created_at}  Updated: {self.item.updated_at}\n"
+            f"Labels: {labels}"
+        )
+
+    def on_key(self, event) -> None:
+        if event.key == "escape":
+            self.dismiss(None)
+        if event.key == "enter":
+            app = self.app
+            if isinstance(app, GhPeekApp):
+                app._open_item_in_browser(self.item, self.list_item)
             self.dismiss(None)
 
 
@@ -173,6 +217,36 @@ class GhPeekApp(App):
         margin: 2 2;
         border: tall $accent;
         background: $panel;
+    }
+
+    #preview {
+        padding: 1 2;
+        width: 80%;
+        height: 80%;
+        border: tall $accent;
+        background: $panel;
+    }
+
+    #preview-title {
+        text-style: bold;
+        padding: 0 0 1 0;
+    }
+
+    #preview-meta {
+        height: 3;
+        color: $text-muted;
+        padding: 0 0 1 0;
+    }
+
+    #preview-body {
+        height: 1fr;
+        border: round $secondary;
+        padding: 1 1;
+    }
+
+    #preview-hint {
+        color: $text-muted;
+        padding: 1 0 0 0;
     }
     """
 
@@ -270,6 +344,12 @@ class GhPeekApp(App):
         for item in items:
             list_view.append(IssueListItem(item))
 
+    @staticmethod
+    def _format_dt(value: Optional[datetime]) -> str:
+        if not value:
+            return "unknown"
+        return value.strftime("%Y-%m-%d")
+
     def _select_repo(self, full_name: str) -> None:
         self.selected_repo = full_name
         self._set_status(f"Loading {full_name}...")
@@ -323,6 +403,12 @@ class GhPeekApp(App):
                 url=issue.html_url,
                 read=issue.id in read_state.issues,
                 state=issue.state,
+                author=issue.user.login if issue.user else "unknown",
+                created_at=self._format_dt(issue.created_at),
+                updated_at=self._format_dt(issue.updated_at),
+                comments=issue.comments,
+                labels=[label.name for label in issue.labels],
+                body=issue.body or "",
             )
             for issue in issues
         ]
@@ -334,6 +420,12 @@ class GhPeekApp(App):
                 url=pull.html_url,
                 read=pull.id in read_state.pulls,
                 state=pull.state,
+                author=pull.user.login if pull.user else "unknown",
+                created_at=self._format_dt(pull.created_at),
+                updated_at=self._format_dt(pull.updated_at),
+                comments=pull.comments,
+                labels=[label.name for label in pull.labels],
+                body=pull.body or "",
             )
             for pull in pulls
         ]
@@ -346,7 +438,7 @@ class GhPeekApp(App):
         )
         return RepoData(summary=summary, issues=issue_items, pulls=pull_items)
 
-    def _open_item(self, item: RepoItem, list_item: IssueListItem) -> None:
+    def _open_item_in_browser(self, item: RepoItem, list_item: IssueListItem) -> None:
         if not webbrowser.open(item.url):
             self._set_status("Unable to open browser.")
         read_state = self._ensure_read_state(self.selected_repo or "")
@@ -401,7 +493,7 @@ class GhPeekApp(App):
             return
         list_item = list_view.children[list_view.index]
         if isinstance(list_item, IssueListItem):
-            self._open_item(list_item.item, list_item)
+            self.push_screen(PreviewScreen(list_item.item, list_item))
 
     def _handle_add_repo(self, value: Optional[str]) -> None:
         if value is None:
@@ -429,7 +521,7 @@ class GhPeekApp(App):
         if event.list_view.id in {"issues-list", "pulls-list"}:
             list_item = event.item
             if isinstance(list_item, IssueListItem):
-                self._open_item(list_item.item, list_item)
+                self.push_screen(PreviewScreen(list_item.item, list_item))
 
 
 def main() -> None:

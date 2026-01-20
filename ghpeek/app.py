@@ -17,6 +17,7 @@ from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import (
+    Checkbox,
     Footer,
     Header,
     Input,
@@ -71,6 +72,13 @@ class RepoListItem(ListItem):
         self.full_name = full_name
 
 
+@dataclass
+class RepoChoice:
+    full_name: str
+    is_fork: bool
+    is_private: bool
+
+
 class IssueListItem(ListItem):
     def __init__(self, item: RepoItem) -> None:
         suffix = " (closed)" if item.state == "closed" else ""
@@ -91,12 +99,16 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
     def __init__(self, show_repo_list: bool) -> None:
         super().__init__()
         self.show_repo_list = show_repo_list
+        self._repo_choices: list[RepoChoice] = []
 
     def compose(self) -> ComposeResult:
         with Container(id="add-repo"):
             yield Label("Add repository")
             if self.show_repo_list:
                 yield Label("Select from your repositories", id="repo-picker-label")
+                yield Checkbox("Forks", value=True, id="filter-forks")
+                yield Checkbox("Public", value=True, id="filter-public")
+                yield Checkbox("Private", value=True, id="filter-private")
                 yield ListView(id="repo-picker")
                 yield LoadingIndicator(id="repo-picker-loading")
             yield Label("Or enter owner/repo", id="repo-input-label")
@@ -114,18 +126,42 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
         if event.key == "escape":
             self.dismiss(None)
 
-    def update_repos(self, repos: list[str]) -> None:
+    def update_repos(self, repos: list[RepoChoice]) -> None:
         if not self.show_repo_list:
             return
-        repo_list = self.query_one("#repo-picker", ListView)
-        repo_list.clear()
-        for repo in repos:
-            repo_list.append(RepoListItem(repo))
+        self._repo_choices = repos
+        self._apply_filters()
         self.query_one("#repo-picker-loading", LoadingIndicator).add_class("hidden")
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         if event.list_view.id == "repo-picker" and isinstance(event.item, RepoListItem):
             self.dismiss(event.item.full_name)
+
+    def _apply_filters(self) -> None:
+        if not self.show_repo_list:
+            return
+        show_forks = self.query_one("#filter-forks", Checkbox).value
+        show_public = self.query_one("#filter-public", Checkbox).value
+        show_private = self.query_one("#filter-private", Checkbox).value
+        filtered: list[RepoChoice] = []
+        for repo in self._repo_choices:
+            if not show_forks and repo.is_fork:
+                continue
+            if repo.is_private and not show_private:
+                continue
+            if not repo.is_private and not show_public:
+                continue
+            filtered.append(repo)
+        repo_list = self.query_one("#repo-picker", ListView)
+        repo_list.clear()
+        for repo in filtered:
+            repo_list.append(RepoListItem(repo.full_name))
+
+    @on(Checkbox.Changed, "#filter-forks")
+    @on(Checkbox.Changed, "#filter-public")
+    @on(Checkbox.Changed, "#filter-private")
+    def _filters_changed(self, event: Checkbox.Changed) -> None:
+        self._apply_filters()
 
 
 class PreviewScreen(ModalScreen[None]):
@@ -519,9 +555,17 @@ class GhPeekApp(App):
             return
         screen.update_repos(repos)
 
-    def _fetch_user_repos(self) -> list[str]:
+    def _fetch_user_repos(self) -> list[RepoChoice]:
         user = self.github.get_user()
-        return sorted(repo.full_name for repo in user.get_repos())
+        choices = [
+            RepoChoice(
+                full_name=repo.full_name,
+                is_fork=repo.fork,
+                is_private=repo.private,
+            )
+            for repo in user.get_repos()
+        ]
+        return sorted(choices, key=lambda choice: choice.full_name)
 
     def action_toggle_closed(self) -> None:
         self.show_closed = not self.show_closed

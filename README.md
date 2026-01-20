@@ -35,7 +35,7 @@ To start GHpeek, simply run the following command:
 ghpeek
 ```
 
-The TUI lets you add repositories by pressing `a`. If a GitHub token is configured, you can pick from your repositories or enter a repository name in the format `owner/repo`. Without a token, you can still enter repositories manually. 
+The TUI lets you add repositories by pressing `a`. If a GitHub token is configured, you can pick from your repositories, filter forks and private/public repos, or enter a repository name in the format `owner/repo`. Without a token, you can still enter repositories manually. 
 The repo will get added to the list on the left. You can navigate through the list using the arrow keys and a quick view of the details like number of issues and pull requests, stars, forks, etc. is shown. Selecting a repository will show you the issues and pull requests in the main view. You can navigate through the issues and pull requests using the arrow keys. Pressing `Enter` opens a preview modal for the selected issue or pull request, and pressing `Enter` again opens it in your default web browser.
 You can jump between issues and pull requests using the `i` and `p` keys or by pressing `tag` to go to next view area. Pressing `r` will refresh the data for the selected repository.
 Press `c` to toggle showing closed issues and pull requests.

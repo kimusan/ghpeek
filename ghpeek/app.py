@@ -103,8 +103,7 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
         self._repo_choices: list[RepoChoice] = []
 
     def compose(self) -> ComposeResult:
-        with Container(id="add-repo"):
-            yield Label("Add repository")
+        with Container(id="add-repo", border_title="Add repository"):
             if self.show_repo_list:
                 yield Label("Select from your repositories", id="repo-picker-label")
                 with Container(id="repo-filters"):
@@ -355,8 +354,7 @@ class GhPeekApp(App):
     def compose(self) -> ComposeResult:
         yield Header()
         with Horizontal(id="app-container"):
-            with Vertical(id="sidebar"):
-                yield Label("Repositories")
+            with Vertical(id="sidebar", border_title="Repositories"):
                 yield ListView(id="repo-list")
             with Vertical(id="main"):
                 yield Static("Select a repository to load details.", id="summary")

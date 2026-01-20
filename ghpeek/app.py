@@ -47,6 +47,7 @@ class RepoItem:
     title: str
     url: str
     read: bool
+    state: str
 
 
 @dataclass
@@ -64,11 +65,14 @@ class RepoListItem(ListItem):
 
 class IssueListItem(ListItem):
     def __init__(self, item: RepoItem) -> None:
-        label = Label(f"#{item.number} {item.title}")
+        suffix = " (closed)" if item.state == "closed" else ""
+        label = Label(f"#{item.number} {item.title}{suffix}")
         super().__init__(label)
         self.item = item
         if not item.read:
             self.add_class("unread")
+        if item.state == "closed":
+            self.add_class("closed")
 
     def mark_read(self) -> None:
         if self.has_class("unread"):
@@ -145,6 +149,10 @@ class GhPeekApp(App):
         color: $warning;
     }
 
+    .closed {
+        color: $text-muted;
+    }
+
     #loading {
         dock: bottom;
         height: 1;
@@ -173,6 +181,7 @@ class GhPeekApp(App):
         ("r", "refresh_repo", "Refresh"),
         ("i", "show_issues", "Issues"),
         ("p", "show_pulls", "Pull requests"),
+        ("c", "toggle_closed", "Toggle closed"),
         ("enter", "open_item", "Open"),
     ]
 
@@ -183,6 +192,7 @@ class GhPeekApp(App):
         self.repo_data: dict[str, RepoData] = {}
         self.selected_repo: Optional[str] = None
         self.current_view = "issues"
+        self.show_closed = False
         token = os.getenv("GITHUB_TOKEN")
         self.github = Github(token) if token else Github()
 
@@ -263,15 +273,21 @@ class GhPeekApp(App):
     def _select_repo(self, full_name: str) -> None:
         self.selected_repo = full_name
         self._set_status(f"Loading {full_name}...")
-        self.run_worker(self._load_repo_data(full_name))
+        self.run_worker(self._load_repo_data(full_name, include_closed=self.show_closed))
 
-    async def _load_repo_data(self, full_name: str, force: bool = False) -> None:
-        if full_name in self.repo_data and not force:
-            self._apply_repo_data(self.repo_data[full_name])
+    async def _load_repo_data(
+        self,
+        full_name: str,
+        include_closed: bool = False,
+        force: bool = False,
+    ) -> None:
+        cache_key = (full_name, include_closed)
+        if cache_key in self.repo_data and not force:
+            self._apply_repo_data(self.repo_data[cache_key])
             return
         self._set_loading(True)
         try:
-            data = await asyncio.to_thread(self._fetch_repo_data, full_name)
+            data = await asyncio.to_thread(self._fetch_repo_data, full_name, include_closed)
         except GithubException as exc:
             self._set_status(f"GitHub error: {exc.data.get('message', str(exc))}")
             self._set_loading(False)
@@ -280,7 +296,7 @@ class GhPeekApp(App):
             self._set_status(f"Error: {exc}")
             self._set_loading(False)
             return
-        self.repo_data[full_name] = data
+        self.repo_data[cache_key] = data
         self._apply_repo_data(data)
         self._set_loading(False)
         self._set_status(f"Loaded {full_name}.")
@@ -292,10 +308,11 @@ class GhPeekApp(App):
         self._render_items(data.issues, issues_list)
         self._render_items(data.pulls, pulls_list)
 
-    def _fetch_repo_data(self, full_name: str) -> RepoData:
+    def _fetch_repo_data(self, full_name: str, include_closed: bool) -> RepoData:
         repo = self.github.get_repo(full_name)
-        pulls = list(repo.get_pulls(state="open"))
-        issues = [issue for issue in repo.get_issues(state="open") if issue.pull_request is None]
+        state = "all" if include_closed else "open"
+        pulls = list(repo.get_pulls(state=state))
+        issues = [issue for issue in repo.get_issues(state=state) if issue.pull_request is None]
         read_state = self._ensure_read_state(full_name)
 
         issue_items = [
@@ -305,6 +322,7 @@ class GhPeekApp(App):
                 title=issue.title,
                 url=issue.html_url,
                 read=issue.id in read_state.issues,
+                state=issue.state,
             )
             for issue in issues
         ]
@@ -315,6 +333,7 @@ class GhPeekApp(App):
                 title=pull.title,
                 url=pull.html_url,
                 read=pull.id in read_state.pulls,
+                state=pull.state,
             )
             for pull in pulls
         ]
@@ -323,7 +342,7 @@ class GhPeekApp(App):
             stars=repo.stargazers_count,
             forks=repo.forks_count,
             open_issues=repo.open_issues_count,
-            open_pulls=len(pulls),
+            open_pulls=len([pull for pull in pulls if pull.state == "open"]),
         )
         return RepoData(summary=summary, issues=issue_items, pulls=pull_items)
 
@@ -350,10 +369,29 @@ class GhPeekApp(App):
             self._set_status("No repository selected.")
             return
         self._set_status(f"Refreshing {self.selected_repo}...")
-        self.run_worker(self._load_repo_data(self.selected_repo, force=True))
+        self.run_worker(
+            self._load_repo_data(
+                self.selected_repo,
+                include_closed=self.show_closed,
+                force=True,
+            )
+        )
 
     def action_add_repo(self) -> None:
         self.push_screen(AddRepoScreen(), self._handle_add_repo)
+
+    def action_toggle_closed(self) -> None:
+        self.show_closed = not self.show_closed
+        state = "shown" if self.show_closed else "hidden"
+        self._set_status(f"Closed items {state}.")
+        if self.selected_repo:
+            self.run_worker(
+                self._load_repo_data(
+                    self.selected_repo,
+                    include_closed=self.show_closed,
+                    force=True,
+                )
+            )
 
     def action_open_item(self) -> None:
         list_view_id = "#issues-list" if self.current_view == "issues" else "#pulls-list"

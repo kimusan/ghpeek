@@ -8,11 +8,12 @@ fi
 
 version="$1"
 
-python - <<'PY'
+VERSION="$version" python - <<'PY'
+import os
 import re
 from pathlib import Path
 
-version = """$version"""
+version = os.environ["VERSION"]
 path = Path("pyproject.toml")
 text = path.read_text()
 new_text, count = re.subn(

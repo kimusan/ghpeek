@@ -107,11 +107,13 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
             yield Label("Add repository")
             if self.show_repo_list:
                 yield Label("Select from your repositories", id="repo-picker-label")
-                with Horizontal(id="repo-filters"):
-                    yield Checkbox("Forks", value=True, id="filter-forks")
-                    yield Checkbox("Public", value=True, id="filter-public")
-                    yield Checkbox("Private", value=True, id="filter-private")
-                    yield Checkbox("Personal", value=True, id="filter-personal")
+                with Container(id="repo-filters"):
+                    with Horizontal():
+                        yield Checkbox("Forks", value=True, id="filter-forks")
+                        yield Checkbox("Public", value=True, id="filter-public")
+                    with Horizontal():
+                        yield Checkbox("Private", value=True, id="filter-private")
+                        yield Checkbox("Personal only", value=False, id="filter-personal")
                 yield ListView(id="repo-picker")
                 yield LoadingIndicator(id="repo-picker-loading")
             yield Label("Or enter owner/repo", id="repo-input-label")
@@ -146,7 +148,7 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
         show_forks = self.query_one("#filter-forks", Checkbox).value
         show_public = self.query_one("#filter-public", Checkbox).value
         show_private = self.query_one("#filter-private", Checkbox).value
-        show_personal = self.query_one("#filter-personal", Checkbox).value
+        show_personal_only = self.query_one("#filter-personal", Checkbox).value
         filtered: list[RepoChoice] = []
         for repo in self._repo_choices:
             if not show_forks and repo.is_fork:
@@ -155,7 +157,7 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
                 continue
             if not repo.is_private and not show_public:
                 continue
-            if repo.is_personal and not show_personal:
+            if show_personal_only and not repo.is_personal:
                 continue
             filtered.append(repo)
         repo_list = self.query_one("#repo-picker", ListView)
@@ -292,7 +294,6 @@ class GhPeekApp(App):
 
     #repo-filters {
         margin: 0 0 1 0;
-        padding: 1 0 0 0;
     }
 
     #repo-picker-loading {

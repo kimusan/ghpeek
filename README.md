@@ -37,6 +37,7 @@ ghpeek
 Press `a` to add a repository. If a GitHub token is configured, you can choose from your own repositories, filter forks, organizations, and public/private repos, or enter a repo manually in `owner/repo` format. Without a token, manual entry still works.
 
 Once added, repositories appear on the left. Use the arrow keys to switch between them, and you will see a summary of stars, forks, and open counts. The main panel lists issues and pull requests; press `Enter` to open a preview, then `Enter` again to open it in your browser.
+The preview includes the issue or PR description plus the latest comments, with a "Load older" option when more are available.
 
 Quick keys:
 - `i` / `p`: jump between Issues and Pull Requests
@@ -69,6 +70,6 @@ GHpeek was inspired by other terminal-based tools and was originally written by 
 
 # Roadmap
 
- - Add support for logging in with a Github token for private repositories
- - Add support for filtering issues and pull requests
- - Add reply to issues and pull requests directly from the TUI
+ - Add search and filtering by label, author, and assignee
+ - Add notifications or a background refresh mode
+ - Add quick actions (close/reopen, comment) directly from the TUI

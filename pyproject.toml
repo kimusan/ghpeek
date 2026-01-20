@@ -1,6 +1,6 @@
 [project]
 name = "ghpeek"
-version = "0.1.0"
+version = "0.2.0"
 description = "Stylish TUI to browse GitHub repositories, issues, and pull requests."
 readme = "README.md"
 requires-python = ">=3.10"

@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.2.0] - 2026-01-20
+
+### Added
+- Scrollable preview with issue/PR descriptions and comment previews.
+- Comment boxes with a "Load older" option and visible loading feedback.
+- Mouse-clickable Issues/Pull Requests tabs.
+- Persistent closed-items toggle with clear "(all)" indicator.
+
+### Changed
+- GitHub token loading from `~/.config/ghpeek/.env`.
+- README updates, including screenshot slot and refreshed usage text.
+
+### Fixed
+- Comment list rendering and layout handling inside the preview.
+
 ## [0.1.0] - 2026-01-20
 
 ### Added

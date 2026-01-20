@@ -29,7 +29,7 @@ from textual.widgets import (
     Static,
 )
 
-from ghpeek.state import AppState, ReadState, load_state, save_state
+from ghpeek.state import AppState, ReadState, RepoFilters, load_state, save_state
 
 REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 
@@ -97,9 +97,16 @@ class IssueListItem(ListItem):
 
 
 class AddRepoScreen(ModalScreen[Optional[str]]):
-    def __init__(self, show_repo_list: bool) -> None:
+    def __init__(
+        self,
+        show_repo_list: bool,
+        filters: RepoFilters,
+        on_filters_changed,
+    ) -> None:
         super().__init__()
         self.show_repo_list = show_repo_list
+        self.filters = filters
+        self.on_filters_changed = on_filters_changed
         self._repo_choices: list[RepoChoice] = []
 
     def compose(self) -> ComposeResult:
@@ -110,8 +117,9 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
                     with Horizontal():
                         yield Checkbox("Forks", value=True, id="filter-forks")
                         yield Checkbox("Public", value=True, id="filter-public")
+                    with Horizontal():
                         yield Checkbox("Private", value=True, id="filter-private")
-                        yield Checkbox("Personal only", value=False, id="filter-personal")
+                        yield Checkbox("Organizations", value=True, id="filter-orgs")
                 yield ListView(id="repo-picker")
                 yield LoadingIndicator(id="repo-picker-loading")
             yield Label("Or enter owner/repo", id="repo-input-label")
@@ -120,6 +128,11 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
 
     def on_mount(self) -> None:
         self.query_one("#add-repo", Container).border_title = "Add repository"
+        if self.show_repo_list:
+            self.query_one("#filter-forks", Checkbox).value = self.filters.show_forks
+            self.query_one("#filter-public", Checkbox).value = self.filters.show_public
+            self.query_one("#filter-private", Checkbox).value = self.filters.show_private
+            self.query_one("#filter-orgs", Checkbox).value = self.filters.show_orgs
         self.query_one(Input).focus()
 
     @on(Input.Submitted, "#repo-input")
@@ -147,7 +160,7 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
         show_forks = self.query_one("#filter-forks", Checkbox).value
         show_public = self.query_one("#filter-public", Checkbox).value
         show_private = self.query_one("#filter-private", Checkbox).value
-        show_personal_only = self.query_one("#filter-personal", Checkbox).value
+        show_orgs = self.query_one("#filter-orgs", Checkbox).value
         filtered: list[RepoChoice] = []
         for repo in self._repo_choices:
             if not show_forks and repo.is_fork:
@@ -156,7 +169,7 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
                 continue
             if not repo.is_private and not show_public:
                 continue
-            if show_personal_only and not repo.is_personal:
+            if not show_orgs and not repo.is_personal:
                 continue
             filtered.append(repo)
         repo_list = self.query_one("#repo-picker", ListView)
@@ -167,8 +180,16 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
     @on(Checkbox.Changed, "#filter-forks")
     @on(Checkbox.Changed, "#filter-public")
     @on(Checkbox.Changed, "#filter-private")
-    @on(Checkbox.Changed, "#filter-personal")
+    @on(Checkbox.Changed, "#filter-orgs")
     def _filters_changed(self, event: Checkbox.Changed) -> None:
+        self.on_filters_changed(
+            RepoFilters(
+                show_forks=self.query_one("#filter-forks", Checkbox).value,
+                show_public=self.query_one("#filter-public", Checkbox).value,
+                show_private=self.query_one("#filter-private", Checkbox).value,
+                show_orgs=self.query_one("#filter-orgs", Checkbox).value,
+            )
+        )
         self._apply_filters()
 
 
@@ -432,10 +453,14 @@ class GhPeekApp(App):
         )
 
     def action_add_repo(self) -> None:
-        screen = AddRepoScreen(self.has_token)
+        screen = AddRepoScreen(self.has_token, self.state.filters, self._update_repo_filters)
         self.push_screen(screen, self._handle_add_repo)
         if self.has_token:
             self.run_worker(self._load_user_repos(screen))
+
+    def _update_repo_filters(self, filters: RepoFilters) -> None:
+        self.state.filters = filters
+        save_state(self.state)
 
     async def _load_user_repos(self, screen: AddRepoScreen) -> None:
         try:

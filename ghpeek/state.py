@@ -17,9 +17,18 @@ class ReadState:
 
 
 @dataclass
+class RepoFilters:
+    show_forks: bool = True
+    show_public: bool = True
+    show_private: bool = True
+    show_orgs: bool = True
+
+
+@dataclass
 class AppState:
     repos: list[str] = field(default_factory=list)
     read: dict[str, ReadState] = field(default_factory=dict)
+    filters: RepoFilters = field(default_factory=RepoFilters)
 
 
 def _read_state_payload(payload: dict[str, Any]) -> AppState:
@@ -29,7 +38,14 @@ def _read_state_payload(payload: dict[str, Any]) -> AppState:
         issues = {int(value) for value in data.get("issues", [])}
         pulls = {int(value) for value in data.get("pulls", [])}
         read_state[str(repo)] = ReadState(issues=issues, pulls=pulls)
-    return AppState(repos=repos, read=read_state)
+    filters_payload = payload.get("filters", {})
+    filters = RepoFilters(
+        show_forks=bool(filters_payload.get("show_forks", True)),
+        show_public=bool(filters_payload.get("show_public", True)),
+        show_private=bool(filters_payload.get("show_private", True)),
+        show_orgs=bool(filters_payload.get("show_orgs", True)),
+    )
+    return AppState(repos=repos, read=read_state, filters=filters)
 
 
 def load_state() -> AppState:
@@ -54,6 +70,12 @@ def save_state(state: AppState) -> None:
                 "pulls": sorted(read.pulls),
             }
             for repo, read in state.read.items()
+        },
+        "filters": {
+            "show_forks": state.filters.show_forks,
+            "show_public": state.filters.show_public,
+            "show_private": state.filters.show_private,
+            "show_orgs": state.filters.show_orgs,
         },
     }
     STATE_FILE.write_text(json.dumps(payload, indent=2, sort_keys=True))

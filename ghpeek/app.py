@@ -14,10 +14,11 @@ from github.GithubException import GithubException
 from rich.text import Text
 from textual import on
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
 from textual.widgets import (
     Checkbox,
+    Button,
     Footer,
     Header,
     Input,
@@ -79,6 +80,13 @@ class RepoChoice:
     is_fork: bool
     is_private: bool
     is_personal: bool
+
+
+@dataclass
+class CommentItem:
+    author: str
+    created_at: str
+    body: str
 
 
 class IssueListItem(ListItem):
@@ -195,10 +203,14 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
 
 
 class PreviewScreen(ModalScreen[None]):
-    def __init__(self, item: RepoItem, list_item: "IssueListItem") -> None:
+    def __init__(self, item: RepoItem, list_item: "IssueListItem", repo_full_name: str) -> None:
         super().__init__()
         self.item = item
         self.list_item = list_item
+        self.repo_full_name = repo_full_name
+        self.comments: list[CommentItem] = []
+        self.comments_shown = 0
+        self.comments_page_size = 10
 
     def compose(self) -> ComposeResult:
         with Container(id="preview"):
@@ -208,6 +220,11 @@ class PreviewScreen(ModalScreen[None]):
             if not body:
                 body = "_No description provided._"
             yield Markdown(body, id="preview-body")
+            with Horizontal(id="comments-header"):
+                yield Static("Comments", id="comments-title")
+                yield Button("Load older", id="load-older", classes="hidden")
+                yield LoadingIndicator(id="comments-loading", classes="hidden")
+            yield VerticalScroll(id="comments-body")
             yield Label("Enter: open in browser   Esc: close", id="preview-hint")
 
     def _build_meta(self) -> str:
@@ -228,6 +245,75 @@ class PreviewScreen(ModalScreen[None]):
             if isinstance(app, GhPeekApp):
                 app._open_item_in_browser(self.item, self.list_item)
             self.dismiss(None)
+
+    def on_mount(self) -> None:
+        self.app.run_worker(self._load_comments())
+
+    async def _load_comments(self) -> None:
+        app = self.app
+        if not isinstance(app, GhPeekApp):
+            return
+        self._set_comments_loading(True)
+        try:
+            comments = await asyncio.to_thread(
+                app._fetch_issue_comments,
+                self.repo_full_name,
+                self.item.number,
+            )
+        except GithubException as exc:
+            app._set_status(f"GitHub error: {exc.data.get('message', str(exc))}")
+            self._set_comments_loading(False)
+            return
+        except Exception as exc:  # noqa: BLE001
+            app._set_status(f"Error: {exc}")
+            self._set_comments_loading(False)
+            return
+        self.comments = comments
+        self.comments_shown = min(self.comments_page_size, len(self.comments))
+        self._render_comments()
+        self._set_comments_loading(False)
+
+    def _set_comments_loading(self, loading: bool) -> None:
+        indicator = self.query_one("#comments-loading", LoadingIndicator)
+        body = self.query_one("#comments-body", VerticalScroll)
+        load_older = self.query_one("#load-older", Button)
+        if loading:
+            indicator.remove_class("hidden")
+            body.add_class("hidden")
+            load_older.add_class("hidden")
+        else:
+            indicator.add_class("hidden")
+            body.remove_class("hidden")
+
+    def _render_comments(self) -> None:
+        title = self.query_one("#comments-title", Static)
+        total = len(self.comments)
+        title.update(f"Comments ({total})")
+        body = self.query_one("#comments-body", VerticalScroll)
+        body.clear()
+        if total == 0:
+            body.mount(Static("No comments yet.", classes="comment-empty"))
+        else:
+            start = max(0, total - self.comments_shown)
+            for comment in self.comments[start:]:
+                header = f"**{comment.author}** · {comment.created_at}"
+                content = comment.body.strip() if comment.body else "_No comment body._"
+                body.mount(Markdown(f"{header}\n\n{content}", classes="comment"))
+        load_older = self.query_one("#load-older", Button)
+        if self.comments_shown < total:
+            load_older.remove_class("hidden")
+        else:
+            load_older.add_class("hidden")
+
+    @on(Button.Pressed, "#load-older")
+    def _load_older(self, event: Button.Pressed) -> None:
+        if self.comments_shown >= len(self.comments):
+            return
+        self.comments_shown = min(
+            self.comments_shown + self.comments_page_size,
+            len(self.comments),
+        )
+        self._render_comments()
 
 
 class GhPeekApp(App):
@@ -428,6 +514,19 @@ class GhPeekApp(App):
         )
         return RepoData(summary=summary, issues=issue_items, pulls=pull_items)
 
+    def _fetch_issue_comments(self, full_name: str, number: int) -> list[CommentItem]:
+        repo = self.github.get_repo(full_name)
+        issue = repo.get_issue(number=number)
+        comments = list(issue.get_comments())
+        return [
+            CommentItem(
+                author=comment.user.login if comment.user else "unknown",
+                created_at=self._format_dt(comment.created_at),
+                body=comment.body or "",
+            )
+            for comment in comments
+        ]
+
     def _open_item_in_browser(self, item: RepoItem, list_item: IssueListItem) -> None:
         if not webbrowser.open(item.url):
             self._set_status("Unable to open browser.")
@@ -515,7 +614,7 @@ class GhPeekApp(App):
             return
         list_item = list_view.children[list_view.index]
         if isinstance(list_item, IssueListItem):
-            self.push_screen(PreviewScreen(list_item.item, list_item))
+            self.push_screen(PreviewScreen(list_item.item, list_item, self.selected_repo or ""))
 
     def _handle_add_repo(self, value: Optional[str]) -> None:
         if value is None:
@@ -543,7 +642,7 @@ class GhPeekApp(App):
         if event.list_view.id in {"issues-list", "pulls-list"}:
             list_item = event.item
             if isinstance(list_item, IssueListItem):
-                self.push_screen(PreviewScreen(list_item.item, list_item))
+                self.push_screen(PreviewScreen(list_item.item, list_item, self.selected_repo or ""))
 
 
 def main() -> None:

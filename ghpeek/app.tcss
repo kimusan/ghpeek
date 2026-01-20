@@ -136,6 +136,36 @@ PreviewScreen {
     padding: 1 1;
 }
 
+#comments-header {
+    height: 1;
+}
+
+#comments-title {
+    color: $text-muted;
+}
+
+#load-older {
+    height: 1;
+}
+
+#comments-loading {
+    height: 1;
+}
+
+#comments-body {
+    height: 8;
+    border: round $secondary;
+    padding: 1 1;
+}
+
+.comment {
+    padding: 0 0 1 0;
+}
+
+.comment-empty {
+    color: $text-muted;
+}
+
 #preview-hint {
     color: $text-muted;
     padding: 1 0 0 0;

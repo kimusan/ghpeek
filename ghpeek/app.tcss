@@ -158,8 +158,10 @@ PreviewScreen {
     padding: 1 1;
 }
 
-.comment {
-    padding: 0 0 1 0;
+.comment-box {
+    border: round $secondary;
+    padding: 1 1;
+    margin: 0 0 1 0;
 }
 
 .comment-empty {

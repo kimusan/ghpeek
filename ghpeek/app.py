@@ -299,7 +299,7 @@ class PreviewScreen(ModalScreen[None]):
             for comment in self.comments[start:]:
                 header = f"**{comment.author}** · {comment.created_at}"
                 content = comment.body.strip() if comment.body else "_No comment body._"
-                body.mount(Markdown(f"{header}\n\n{content}", classes="comment"))
+                body.mount(Markdown(f"{header}\n\n{content}", classes="comment-box"))
         load_older = self.query_one("#load-older", Button)
         if self.comments_shown < total:
             load_older.remove_class("hidden")

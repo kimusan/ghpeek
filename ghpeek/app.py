@@ -29,6 +29,7 @@ from textual.widgets import (
     Static,
 )
 
+from ghpeek import __version__
 from ghpeek.state import AppState, ReadState, RepoFilters, load_state, save_state
 
 REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
@@ -231,7 +232,7 @@ class PreviewScreen(ModalScreen[None]):
 
 class GhPeekApp(App):
     CSS_PATH = "app.tcss"
-    TITLE = "GHPeek - your friendly github viewer"
+    TITLE = f"GHPeek v{__version__} - your friendly github viewer"
 
     BINDINGS = [
         ("a", "add_repo", "Add repo"),

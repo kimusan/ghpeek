@@ -30,7 +30,7 @@ from textual.widgets import (
 )
 
 from ghpeek import __version__
-from ghpeek.state import AppState, ReadState, RepoFilters, load_state, save_state
+from ghpeek.state import CONFIG_DIR, AppState, ReadState, RepoFilters, load_state, save_state
 
 REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 
@@ -246,7 +246,7 @@ class GhPeekApp(App):
 
     def __init__(self) -> None:
         super().__init__()
-        load_dotenv()
+        load_dotenv(CONFIG_DIR / ".env")
         self.state: AppState = load_state()
         self.repo_data: dict[str, RepoData] = {}
         self.selected_repo: Optional[str] = None

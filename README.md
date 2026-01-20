@@ -46,7 +46,7 @@ Quick keys:
 
 ## GitHub token
 
-To enable repository picking and higher API limits, set a personal access token in `GITHUB_TOKEN` (recommended via a `.env` file in the project root). For private repositories, the token needs the `repo` scope. For public repos only, `public_repo` (or no scopes) is sufficient.
+To enable repository picking and higher API limits, set a personal access token in `GITHUB_TOKEN` (recommended via a `.env` file in `~/.config/ghpeek/.env`). For private repositories, the token needs the `repo` scope. For public repos only, `public_repo` (or no scopes) is sufficient.
 
 # License
 

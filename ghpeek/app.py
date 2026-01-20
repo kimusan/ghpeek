@@ -77,6 +77,7 @@ class RepoChoice:
     full_name: str
     is_fork: bool
     is_private: bool
+    is_personal: bool
 
 
 class IssueListItem(ListItem):
@@ -106,9 +107,11 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
             yield Label("Add repository")
             if self.show_repo_list:
                 yield Label("Select from your repositories", id="repo-picker-label")
-                yield Checkbox("Forks", value=True, id="filter-forks")
-                yield Checkbox("Public", value=True, id="filter-public")
-                yield Checkbox("Private", value=True, id="filter-private")
+                with Horizontal(id="repo-filters"):
+                    yield Checkbox("Forks", value=True, id="filter-forks")
+                    yield Checkbox("Public", value=True, id="filter-public")
+                    yield Checkbox("Private", value=True, id="filter-private")
+                    yield Checkbox("Personal", value=True, id="filter-personal")
                 yield ListView(id="repo-picker")
                 yield LoadingIndicator(id="repo-picker-loading")
             yield Label("Or enter owner/repo", id="repo-input-label")
@@ -143,6 +146,7 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
         show_forks = self.query_one("#filter-forks", Checkbox).value
         show_public = self.query_one("#filter-public", Checkbox).value
         show_private = self.query_one("#filter-private", Checkbox).value
+        show_personal = self.query_one("#filter-personal", Checkbox).value
         filtered: list[RepoChoice] = []
         for repo in self._repo_choices:
             if not show_forks and repo.is_fork:
@@ -150,6 +154,8 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
             if repo.is_private and not show_private:
                 continue
             if not repo.is_private and not show_public:
+                continue
+            if repo.is_personal and not show_personal:
                 continue
             filtered.append(repo)
         repo_list = self.query_one("#repo-picker", ListView)
@@ -160,6 +166,7 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
     @on(Checkbox.Changed, "#filter-forks")
     @on(Checkbox.Changed, "#filter-public")
     @on(Checkbox.Changed, "#filter-private")
+    @on(Checkbox.Changed, "#filter-personal")
     def _filters_changed(self, event: Checkbox.Changed) -> None:
         self._apply_filters()
 
@@ -281,6 +288,11 @@ class GhPeekApp(App):
         height: 8;
         border: round $secondary;
         margin: 1 0;
+    }
+
+    #repo-filters {
+        height: 1;
+        margin: 0 0 1 0;
     }
 
     #repo-picker-loading {
@@ -557,11 +569,13 @@ class GhPeekApp(App):
 
     def _fetch_user_repos(self) -> list[RepoChoice]:
         user = self.github.get_user()
+        user_login = user.login
         choices = [
             RepoChoice(
                 full_name=repo.full_name,
                 is_fork=repo.fork,
                 is_private=repo.private,
+                is_personal=(repo.owner and repo.owner.login == user_login),
             )
             for repo in user.get_repos()
         ]

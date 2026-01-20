@@ -2,6 +2,10 @@ Screen {
     background: $surface;
 }
 
+AddRepoScreen {
+    align: center middle;
+}
+
 #app-container {
     height: 100%;
 }
@@ -68,7 +72,6 @@ Screen {
 #add-repo {
     padding: 1 2;
     width: 60%;
-    margin: 2 2;
     border: tall $accent;
     background: $panel;
 }
@@ -80,9 +83,22 @@ Screen {
 }
 
 #repo-filters {
-    margin: 0 0 1 0;
+    margin: 0 0 0 0;
+    padding: 0 0 0 0;
+    height: auto;
 }
-
+#repo-filters > Horizontal {
+   padding: 0 0 0 0;
+   margin: 0 0 0 0;
+   height: auto;
+}
+#repo-filters > Horizontal > Checkbox {
+   padding: 0 0 0 0;
+   margin: 0 0 0 0;
+   width: auto;
+   border: none;
+   background: $panel;
+}
 #repo-picker-loading {
     height: 1;
 }

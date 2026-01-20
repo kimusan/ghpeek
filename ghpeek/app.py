@@ -110,7 +110,6 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
                     with Horizontal():
                         yield Checkbox("Forks", value=True, id="filter-forks")
                         yield Checkbox("Public", value=True, id="filter-public")
-                    with Horizontal():
                         yield Checkbox("Private", value=True, id="filter-private")
                         yield Checkbox("Personal only", value=False, id="filter-personal")
                 yield ListView(id="repo-picker")

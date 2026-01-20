@@ -512,15 +512,12 @@ class GhPeekApp(App):
         try:
             repos = await asyncio.to_thread(self._fetch_user_repos)
         except GithubException as exc:
-            self.call_from_thread(
-                self._set_status,
-                f"GitHub error: {exc.data.get('message', str(exc))}",
-            )
+            self._set_status(f"GitHub error: {exc.data.get('message', str(exc))}")
             return
         except Exception as exc:  # noqa: BLE001
-            self.call_from_thread(self._set_status, f"Error: {exc}")
+            self._set_status(f"Error: {exc}")
             return
-        self.call_from_thread(screen.update_repos, repos)
+        screen.update_repos(repos)
 
     def _fetch_user_repos(self) -> list[str]:
         user = self.github.get_user()

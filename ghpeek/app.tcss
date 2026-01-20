@@ -1,0 +1,118 @@
+Screen {
+    background: $surface;
+}
+
+#app-container {
+    height: 100%;
+}
+
+#sidebar {
+    width: 28%;
+    min-width: 24;
+    padding: 1 1;
+    border: tall $secondary;
+}
+
+#main {
+    width: 72%;
+    padding: 1 1;
+}
+
+#summary {
+    height: 6;
+    padding: 0 1;
+    border: heavy $secondary;
+}
+
+#view-labels {
+    height: 1;
+}
+
+#view-labels Label {
+    padding: 0 1;
+}
+
+#view-labels .active {
+    background: $accent;
+    color: $text;
+}
+
+#issues-list, #pulls-list {
+    border: heavy $secondary;
+    height: 1fr;
+}
+
+.unread {
+    text-style: bold;
+    color: $warning;
+}
+
+.closed {
+    color: $text-muted;
+}
+
+#loading {
+    dock: bottom;
+    height: 1;
+}
+
+.hidden {
+    display: none;
+}
+
+#status {
+    height: 1;
+    color: $text-muted;
+}
+
+#add-repo {
+    padding: 1 2;
+    width: 60%;
+    margin: 2 2;
+    border: tall $accent;
+    background: $panel;
+}
+
+#repo-picker {
+    height: 8;
+    border: round $secondary;
+    margin: 1 0;
+}
+
+#repo-filters {
+    margin: 0 0 1 0;
+}
+
+#repo-picker-loading {
+    height: 1;
+}
+
+#preview {
+    padding: 1 2;
+    width: 80%;
+    height: 80%;
+    border: tall $accent;
+    background: $panel;
+}
+
+#preview-title {
+    text-style: bold;
+    padding: 0 0 1 0;
+}
+
+#preview-meta {
+    height: 3;
+    color: $text-muted;
+    padding: 0 0 1 0;
+}
+
+#preview-body {
+    height: 1fr;
+    border: round $secondary;
+    padding: 1 1;
+}
+
+#preview-hint {
+    color: $text-muted;
+    padding: 1 0 0 0;
+}

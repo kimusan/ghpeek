@@ -6,6 +6,10 @@ AddRepoScreen {
     align: center middle;
 }
 
+PreviewScreen {
+    align: center middle;
+}
+
 #app-container {
     height: 100%;
 }
@@ -74,6 +78,7 @@ AddRepoScreen {
     width: 60%;
     border: tall $accent;
     background: $panel;
+    height: auto;
 }
 
 #repo-picker {

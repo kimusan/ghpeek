@@ -344,7 +344,7 @@ class GhPeekApp(App):
         self.repo_data: dict[str, RepoData] = {}
         self.selected_repo: Optional[str] = None
         self.current_view = "issues"
-        self.show_closed = False
+        self.show_closed = self.state.show_closed
         token = os.getenv("GITHUB_TOKEN")
         self.github = Github(token) if token else Github()
         self.has_token = bool(token)
@@ -368,6 +368,7 @@ class GhPeekApp(App):
 
     def on_mount(self) -> None:
         self.query_one("#sidebar", Vertical).border_title = "Repositories"
+        self._update_view_labels()
         repo_list = self.query_one("#repo-list", ListView)
         for repo in sorted(self.state.repos):
             repo_list.append(RepoListItem(repo))
@@ -406,6 +407,12 @@ class GhPeekApp(App):
             pulls_label.add_class("active")
             issues_label.remove_class("active")
             pulls.focus()
+        self._update_view_labels()
+
+    def _update_view_labels(self) -> None:
+        suffix = " (all)" if self.show_closed else ""
+        self.query_one("#issues-label", Label).update(f"Issues{suffix}")
+        self.query_one("#pulls-label", Label).update(f"Pull Requests{suffix}")
 
     @on(Click, "#issues-label")
     def _click_issues_label(self, event: Click) -> None:
@@ -610,8 +617,11 @@ class GhPeekApp(App):
 
     def action_toggle_closed(self) -> None:
         self.show_closed = not self.show_closed
+        self.state.show_closed = self.show_closed
+        save_state(self.state)
         state = "shown" if self.show_closed else "hidden"
         self._set_status(f"Closed items {state}.")
+        self._update_view_labels()
         if self.selected_repo:
             self.run_worker(
                 self._load_repo_data(

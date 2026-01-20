@@ -29,6 +29,7 @@ class AppState:
     repos: list[str] = field(default_factory=list)
     read: dict[str, ReadState] = field(default_factory=dict)
     filters: RepoFilters = field(default_factory=RepoFilters)
+    show_closed: bool = False
 
 
 def _read_state_payload(payload: dict[str, Any]) -> AppState:
@@ -45,7 +46,8 @@ def _read_state_payload(payload: dict[str, Any]) -> AppState:
         show_private=bool(filters_payload.get("show_private", True)),
         show_orgs=bool(filters_payload.get("show_orgs", True)),
     )
-    return AppState(repos=repos, read=read_state, filters=filters)
+    show_closed = bool(payload.get("show_closed", False))
+    return AppState(repos=repos, read=read_state, filters=filters, show_closed=show_closed)
 
 
 def load_state() -> AppState:
@@ -77,5 +79,6 @@ def save_state(state: AppState) -> None:
             "show_private": state.filters.show_private,
             "show_orgs": state.filters.show_orgs,
         },
+        "show_closed": state.show_closed,
     }
     STATE_FILE.write_text(json.dumps(payload, indent=2, sort_keys=True))

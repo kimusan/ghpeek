@@ -203,6 +203,35 @@ class AddRepoScreen(ModalScreen[Optional[str]]):
         self._apply_filters()
 
 
+class ConfirmRemoveScreen(ModalScreen[bool]):
+    def __init__(self, repo_name: str) -> None:
+        super().__init__()
+        self.repo_name = repo_name
+
+    def compose(self) -> ComposeResult:
+        with Container(id="confirm-remove"):
+            yield Static(f"Remove {self.repo_name} from GHpeek?", id="confirm-remove-text")
+            with Horizontal(id="confirm-remove-actions"):
+                yield Button("Remove", id="confirm-remove-button", variant="error")
+                yield Button("Cancel", id="confirm-cancel-button")
+
+    def on_mount(self) -> None:
+        self.query_one("#confirm-remove", Container).border_title = "Remove repository"
+        self.query_one("#confirm-cancel-button", Button).focus()
+
+    def on_key(self, event) -> None:
+        if event.key == "escape":
+            self.dismiss(False)
+
+    @on(Button.Pressed, "#confirm-remove-button")
+    def _confirm_remove(self, event: Button.Pressed) -> None:
+        self.dismiss(True)
+
+    @on(Button.Pressed, "#confirm-cancel-button")
+    def _cancel_remove(self, event: Button.Pressed) -> None:
+        self.dismiss(False)
+
+
 class PreviewScreen(ModalScreen[None]):
     def __init__(self, item: RepoItem, list_item: "IssueListItem", repo_full_name: str) -> None:
         super().__init__()
@@ -329,6 +358,7 @@ class GhPeekApp(App):
 
     BINDINGS = [
         ("a", "add_repo", "Add repo"),
+        ("d", "remove_repo", "Remove repo"),
         ("r", "refresh_repo", "Refresh"),
         ("i", "show_issues", "Issues"),
         ("p", "show_pulls", "Pull requests"),
@@ -651,12 +681,69 @@ class GhPeekApp(App):
         if value in self.state.repos:
             self._set_status("Repository already added.")
             return
-        self.state.repos.append(value)
+        self._set_status(f"Checking {value}...")
+        self.run_worker(self._validate_and_add_repo(value))
+
+    async def _validate_and_add_repo(self, value: str) -> None:
+        self._set_loading(True)
+        try:
+            repo = await asyncio.to_thread(self.github.get_repo, value)
+        except GithubException as exc:
+            message = exc.data.get("message", str(exc))
+            self._set_status(f"Repository not added: {message}")
+            self._set_loading(False)
+            return
+        except Exception as exc:  # noqa: BLE001
+            self._set_status(f"Repository not added: {exc}")
+            self._set_loading(False)
+            return
+        self._set_loading(False)
+        self._add_repo(repo.full_name)
+
+    def _add_repo(self, full_name: str) -> None:
+        if full_name in self.state.repos:
+            self._set_status("Repository already added.")
+            return
+        self.state.repos.append(full_name)
         save_state(self.state)
         repo_list = self.query_one("#repo-list", ListView)
-        repo_list.append(RepoListItem(value))
+        repo_list.append(RepoListItem(full_name))
         repo_list.index = len(repo_list.children) - 1
-        self._select_repo(value)
+        self._select_repo(full_name)
+
+    def action_remove_repo(self) -> None:
+        if not self.selected_repo:
+            self._set_status("No repository selected.")
+            return
+        self.push_screen(
+            ConfirmRemoveScreen(self.selected_repo),
+            lambda confirmed: self._remove_selected_repo() if confirmed else self._set_status("Remove canceled."),
+        )
+
+    def _remove_selected_repo(self) -> None:
+        repo = self.selected_repo
+        if not repo:
+            return
+        if repo in self.state.repos:
+            self.state.repos.remove(repo)
+        self.state.read.pop(repo, None)
+        self.repo_data = {key: value for key, value in self.repo_data.items() if key[0] != repo}
+        save_state(self.state)
+
+        repo_list = self.query_one("#repo-list", ListView)
+        index = repo_list.index or 0
+        for child in list(repo_list.children):
+            if isinstance(child, RepoListItem) and child.full_name == repo:
+                child.remove()
+                break
+
+        self.selected_repo = None
+        self.query_one("#summary", Static).update("Select a repository to load details.")
+        self._render_items([], self.query_one("#issues-list", ListView))
+        self._render_items([], self.query_one("#pulls-list", ListView))
+        if repo_list.children:
+            repo_list.index = min(index, len(repo_list.children) - 1)
+        self._set_status(f"Removed {repo}.")
 
     def on_list_view_highlighted(self, event: ListView.Highlighted) -> None:
         if event.list_view.id == "repo-list" and event.item:

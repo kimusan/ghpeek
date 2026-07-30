@@ -43,6 +43,7 @@ Quick keys:
 - `i` / `p`: jump between Issues and Pull Requests
 - `c`: show or hide closed issues/PRs
 - `r`: refresh the selected repo
+- `d`: remove the selected repo after confirmation
 - `q`: quit
 
 ## GitHub token

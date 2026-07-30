@@ -10,6 +10,26 @@ PreviewScreen {
     align: center middle;
 }
 
+ConfirmRemoveScreen {
+    align: center middle;
+}
+
+#confirm-remove {
+    padding: 1 2;
+    width: 60%;
+    height: auto;
+    border: tall $error;
+    background: $panel;
+}
+
+#confirm-remove-text {
+    padding: 0 0 1 0;
+}
+
+#confirm-remove-actions {
+    height: 3;
+}
+
 #app-container {
     height: 100%;
 }

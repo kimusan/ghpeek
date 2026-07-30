@@ -79,6 +79,11 @@ ConfirmRemoveScreen {
     color: $text-muted;
 }
 
+.repo-updated {
+    color: $warning;
+    text-style: bold;
+}
+
 #status-bar {
     height: 1;
 }

@@ -39,10 +39,13 @@ Press `a` to add a repository. If a GitHub token is configured, you can choose f
 Once added, repositories appear on the left. Use the arrow keys to switch between them, and you will see a summary of stars, forks, and open counts. The main panel lists issues and pull requests; press `Enter` to open a preview, then `Enter` again to open it in your browser.
 The preview includes the issue or PR description plus the latest comments, with a "Load older" option when more are available.
 
+When you refresh all repositories, repos with updates are highlighted in the sidebar. A bug marker means issue activity, and a PR marker means pull request activity. The marker is cleared when you select that repository.
+
 Quick keys:
 - `i` / `p`: jump between Issues and Pull Requests
 - `c`: show or hide closed issues/PRs
 - `r`: refresh the selected repo
+- `Shift+r`: refresh all repositories and mark repos with issue/PR updates
 - `d`: remove the selected repo after confirmation
 - `q`: quit
 

@@ -71,8 +71,32 @@ class RepoData:
 
 class RepoListItem(ListItem):
     def __init__(self, full_name: str) -> None:
-        super().__init__(Label(full_name))
+        self.label = Label(full_name)
+        super().__init__(self.label)
         self.full_name = full_name
+        self.has_issue_updates = False
+        self.has_pull_updates = False
+
+    def set_updates(self, issue_updates: bool, pull_updates: bool) -> None:
+        self.has_issue_updates = issue_updates
+        self.has_pull_updates = pull_updates
+        self._render_label()
+
+    def clear_updates(self) -> None:
+        self.set_updates(False, False)
+
+    def _render_label(self) -> None:
+        indicators: list[str] = []
+        if self.has_issue_updates:
+            indicators.append("🐛")
+        if self.has_pull_updates:
+            indicators.append("PR")
+        suffix = f" [{' '.join(indicators)}]" if indicators else ""
+        self.label.update(f"{self.full_name}{suffix}")
+        if indicators:
+            self.add_class("repo-updated")
+        else:
+            self.remove_class("repo-updated")
 
 
 @dataclass
@@ -360,6 +384,7 @@ class GhPeekApp(App):
         ("a", "add_repo", "Add repo"),
         ("d", "remove_repo", "Remove repo"),
         ("r", "refresh_repo", "Refresh"),
+        ("R", "refresh_all", "Refresh all"),
         ("i", "show_issues", "Issues"),
         ("p", "show_pulls", "Pull requests"),
         ("c", "toggle_closed", "Toggle closed"),
@@ -371,7 +396,8 @@ class GhPeekApp(App):
         super().__init__()
         load_dotenv(CONFIG_DIR / ".env")
         self.state: AppState = load_state()
-        self.repo_data: dict[str, RepoData] = {}
+        self.repo_data: dict[tuple[str, bool], RepoData] = {}
+        self.repo_updates: dict[str, set[str]] = {}
         self.selected_repo: Optional[str] = None
         self.current_view = "issues"
         self.show_closed = self.state.show_closed
@@ -444,6 +470,43 @@ class GhPeekApp(App):
         self.query_one("#issues-label", Label).update(f"Issues{suffix}")
         self.query_one("#pulls-label", Label).update(f"Pull Requests{suffix}")
 
+    def _repo_list_item(self, full_name: str) -> Optional[RepoListItem]:
+        repo_list = self.query_one("#repo-list", ListView)
+        for child in repo_list.children:
+            if isinstance(child, RepoListItem) and child.full_name == full_name:
+                return child
+        return None
+
+    def _mark_repo_updates(self, full_name: str, updates: set[str]) -> None:
+        self.repo_updates[full_name] = updates
+        item = self._repo_list_item(full_name)
+        if item:
+            item.set_updates("issues" in updates, "pulls" in updates)
+
+    def _clear_repo_updates(self, full_name: str) -> None:
+        self.repo_updates.pop(full_name, None)
+        item = self._repo_list_item(full_name)
+        if item:
+            item.clear_updates()
+
+    @staticmethod
+    def _item_snapshot(items: Iterable[RepoItem]) -> dict[int, tuple[str, str, int]]:
+        return {item.item_id: (item.state, item.updated_at, item.comments) for item in items}
+
+    def _detect_repo_updates(self, old: Optional[RepoData], new: RepoData) -> set[str]:
+        if old is None:
+            return set()
+        updates: set[str] = set()
+        old_issues = self._item_snapshot(old.issues)
+        new_issues = self._item_snapshot(new.issues)
+        old_pulls = self._item_snapshot(old.pulls)
+        new_pulls = self._item_snapshot(new.pulls)
+        if old_issues != new_issues:
+            updates.add("issues")
+        if old_pulls != new_pulls:
+            updates.add("pulls")
+        return updates
+
     @on(Click, "#issues-label")
     def _click_issues_label(self, event: Click) -> None:
         self._set_view("issues")
@@ -479,6 +542,7 @@ class GhPeekApp(App):
         return value.strftime("%Y-%m-%d")
 
     def _select_repo(self, full_name: str) -> None:
+        self._clear_repo_updates(full_name)
         self.selected_repo = full_name
         self._set_status(f"Loading {full_name}...")
         self.run_worker(self._load_repo_data(full_name, include_closed=self.show_closed))
@@ -610,6 +674,40 @@ class GhPeekApp(App):
             )
         )
 
+    def action_refresh_all(self) -> None:
+        if not self.state.repos:
+            self._set_status("No repositories to refresh.")
+            return
+        self.run_worker(self._refresh_all_repos())
+
+    async def _refresh_all_repos(self) -> None:
+        repos = sorted(self.state.repos)
+        failed = 0
+        for index, full_name in enumerate(repos, start=1):
+            self._set_status(f"Refreshing {index}/{len(repos)}: {full_name}")
+            cache_key = (full_name, self.show_closed)
+            old_data = self.repo_data.get(cache_key)
+            try:
+                data = await asyncio.to_thread(
+                    self._fetch_repo_data,
+                    full_name,
+                    self.show_closed,
+                )
+            except Exception:  # noqa: BLE001
+                failed += 1
+                continue
+            self.repo_data[cache_key] = data
+            updates = self._detect_repo_updates(old_data, data)
+            if full_name == self.selected_repo:
+                self._apply_repo_data(data)
+                self._clear_repo_updates(full_name)
+            elif updates:
+                self._mark_repo_updates(full_name, updates)
+        if failed:
+            self._set_status(f"Refresh all done. {failed} failed.")
+        else:
+            self._set_status("Refresh all done.")
+
     def action_add_repo(self) -> None:
         screen = AddRepoScreen(self.has_token, self.state.filters, self._update_repo_filters)
         self.push_screen(screen, self._handle_add_repo)
@@ -727,6 +825,7 @@ class GhPeekApp(App):
         if repo in self.state.repos:
             self.state.repos.remove(repo)
         self.state.read.pop(repo, None)
+        self.repo_updates.pop(repo, None)
         self.repo_data = {key: value for key, value in self.repo_data.items() if key[0] != repo}
         save_state(self.state)
 

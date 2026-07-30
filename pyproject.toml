@@ -1,6 +1,6 @@
 [project]
 name = "ghpeek"
-version = "0.2.0"
+version = "0.2.1"
 description = "Stylish TUI to browse GitHub repositories, issues, and pull requests."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -18,3 +18,7 @@ ghpeek = "ghpeek.app:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["ghpeek*"]
+
+[tool.setuptools.package-data]
+ghpeek = ["*.tcss"]
+

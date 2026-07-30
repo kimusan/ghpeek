@@ -556,6 +556,7 @@ class GhPeekApp(App):
         cache_key = (full_name, include_closed)
         if cache_key in self.repo_data and not force:
             self._apply_repo_data(self.repo_data[cache_key])
+            self._set_status(f"Loaded {full_name}.")
             return
         self._set_loading(True)
         try:
